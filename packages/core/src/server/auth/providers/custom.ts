@@ -3,7 +3,7 @@ import {
   type DiscoveredMetadata,
   discoverAuthorizationServer,
 } from "../discovery.js";
-import type { OAuthConfig } from "../index.js";
+import type { JwksOAuthConfig } from "../index.js";
 
 /** Options accepted by {@link customProvider} and the branded providers. */
 export type CustomProviderOptions = {
@@ -37,7 +37,7 @@ export type CustomProviderOptions = {
 /** Builds a complete {@link OAuthConfig} from an IdP's OAuth discovery document. */
 export async function customProvider(
   opts: CustomProviderOptions,
-): Promise<OAuthConfig> {
+): Promise<JwksOAuthConfig> {
   const discovered = await discoverAuthorizationServer(opts.issuer);
 
   // JWKS verification needs a signing-key URL; without it the server can't verify

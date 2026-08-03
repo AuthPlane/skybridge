@@ -67,7 +67,9 @@ A `Promise` (discovery is a boot-time network call) for the `OAuthConfig` you pa
 type OAuthConfig = {
   baseUrl?: string;
   oauthMetadata: OAuthMetadata;
-  verify: { issuer: string; audience?: string; jwksUri?: string };
+  verify:
+    | { issuer: string; audience?: string; jwksUri?: string }
+    | OAuthTokenVerifier;
   scopesSupported?: string[];
   requiredScopes?: string[];
 };
@@ -77,11 +79,13 @@ type OAuthConfig = {
 | --- | --- |
 | `baseUrl` | Echoes the `baseUrl` option. |
 | `oauthMetadata` | AS metadata served at `/.well-known/oauth-authorization-server`. |
-| `verify` | JWKS token-verification config. |
+| `verify` | JWKS token-verification config, or a [verifier](/api-reference/verifier) of your own. |
 | `scopesSupported` | Scopes advertised in protected-resource metadata. |
 | `requiredScopes` | Server-wide required-scope floor. |
 
 Build this object by hand only to wire an IdP whose metadata `customProvider` can't discover: supply `verify.issuer` and `verify.jwksUri` yourself and the [`oauth`](/api-reference/mcp-server#constructor) option mounts the same endpoints.
+
+`verify` also accepts a caller-supplied [verifier](/api-reference/verifier) — an object with a `verifyAccessToken(token)` method — instead of the JWKS config. Use it when verification is more than a JWKS check: opaque tokens verified by introspection, revocation lookups, custom claim mapping, or an identity provider's own SDK. The verifier resolves with an [`AuthInfo`](/api-reference/verifier#authinfo) or throws `InvalidTokenError` / `InsufficientScopeError`, exactly as with [`requireBearerAuth`](/api-reference/require-bearer-auth); the metadata endpoints, per-tool schemes, and challenges keep working unchanged.
 
 <CardGroup cols={3}>
   <Card title="Connect an Identity Provider" icon="fingerprint" href="/guides/auth-providers">

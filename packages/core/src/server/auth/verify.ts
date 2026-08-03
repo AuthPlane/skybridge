@@ -13,6 +13,21 @@ export type JwksVerifyConfig = {
   jwksUri?: string;
 };
 
+/**
+ * Distinguishes a caller-supplied `OAuthTokenVerifier` from a
+ * `JwksVerifyConfig` in `OAuthConfig.verify`. An object carrying a
+ * `verifyAccessToken` function is taken as a verifier even if it also has
+ * config-shaped fields.
+ */
+export function isTokenVerifier(
+  verify: JwksVerifyConfig | OAuthTokenVerifier,
+): verify is OAuthTokenVerifier {
+  return (
+    typeof (verify as Partial<OAuthTokenVerifier>).verifyAccessToken ===
+    "function"
+  );
+}
+
 /** Builds an `OAuthTokenVerifier` validating JWTs against a remote JWKS. Internal, not exported. */
 export function createJwksVerifier(
   config: JwksVerifyConfig,

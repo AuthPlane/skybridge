@@ -1,4 +1,4 @@
-import type { OAuthConfig } from "../index.js";
+import type { JwksOAuthConfig } from "../index.js";
 import { type CustomProviderOptions, customProvider } from "./custom.js";
 
 /** Options accepted by {@link authplaneProvider}. */
@@ -80,7 +80,7 @@ function parseIdentifier(value: string, option: string): URL {
  */
 export function authplaneProvider(
   opts: AuthplaneProviderOptions,
-): Promise<OAuthConfig> {
+): Promise<JwksOAuthConfig> {
   const { issuer, resource, audience, ...rest } = opts;
 
   parseIdentifier(issuer, "issuer");

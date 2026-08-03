@@ -2,7 +2,7 @@
 import http from "node:http";
 import * as jose from "jose";
 import { afterEach, describe, expect, it } from "vitest";
-import { createJwksVerifier } from "./verify.js";
+import { createJwksVerifier, isTokenVerifier } from "./verify.js";
 
 const ISSUER = "https://issuer.test";
 const AUDIENCE = "api://default";
@@ -119,5 +119,36 @@ describe("createJwksVerifier", () => {
       "openid",
       "email",
     ]);
+  });
+});
+
+describe("isTokenVerifier", () => {
+  it("recognises an object implementing verifyAccessToken", () => {
+    expect(
+      isTokenVerifier({
+        verifyAccessToken: async () => ({
+          token: "t",
+          clientId: "c",
+          scopes: [],
+        }),
+      }),
+    ).toBe(true);
+  });
+
+  it("treats a JwksVerifyConfig as config, not a verifier", () => {
+    expect(isTokenVerifier({ issuer: "https://issuer.test" })).toBe(false);
+  });
+
+  it("prefers the verifier reading when both shapes are present", () => {
+    expect(
+      isTokenVerifier({
+        issuer: "https://issuer.test",
+        verifyAccessToken: async () => ({
+          token: "t",
+          clientId: "c",
+          scopes: [],
+        }),
+      } as never),
+    ).toBe(true);
   });
 });
