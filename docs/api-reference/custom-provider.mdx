@@ -68,6 +68,7 @@ type OAuthConfig = {
   baseUrl?: string;
   oauthMetadata: OAuthMetadata;
   verify: { issuer: string; audience?: string; jwksUri?: string };
+  createVerifier?: (config: OAuthConfig) => OAuthTokenVerifier;
   scopesSupported?: string[];
   requiredScopes?: string[];
 };
@@ -78,10 +79,13 @@ type OAuthConfig = {
 | `baseUrl` | Echoes the `baseUrl` option. |
 | `oauthMetadata` | AS metadata served at `/.well-known/oauth-authorization-server`. |
 | `verify` | JWKS token-verification config. |
+| `createVerifier` | Creates the token verifier; defaults to the built-in JWKS verifier configured by `verify`. |
 | `scopesSupported` | Scopes advertised in protected-resource metadata. |
 | `requiredScopes` | Server-wide required-scope floor. |
 
 Build this object by hand only to wire an IdP whose metadata `customProvider` can't discover: supply `verify.issuer` and `verify.jwksUri` yourself and the [`oauth`](/api-reference/mcp-server#constructor) option mounts the same endpoints.
+
+Set `createVerifier` to supply your own [verifier](/api-reference/verifier) — an object with a `verifyAccessToken(token)` method, the same contract [`requireBearerAuth`](/api-reference/require-bearer-auth) accepts — for verification the JWKS path can't express, such as introspection of opaque tokens or an identity provider's own SDK. When omitted, Skybridge's built-in JWKS verifier, configured by `verify`, is used.
 
 <CardGroup cols={3}>
   <Card title="Connect an Identity Provider" icon="fingerprint" href="/guides/auth-providers">

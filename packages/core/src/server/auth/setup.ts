@@ -37,7 +37,9 @@ export function setupOAuth(
 
   const acceptsAnonymous = () =>
     [...schemesByTool.values()].some(securitySchemesAllowAnonymous);
-  const verifier = createJwksVerifier(config.verify);
+  const verifier = (
+    config.createVerifier ?? ((c: OAuthConfig) => createJwksVerifier(c.verify))
+  )(config);
   const bearer = (options: BearerAuthMiddlewareOptions): RequestHandler => {
     const required = requireBearerAuth(options);
     const optional = optionalBearerAuth(options);
