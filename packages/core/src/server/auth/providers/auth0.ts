@@ -1,4 +1,4 @@
-import type { OAuthConfig } from "../index.js";
+import type { JwksOAuthConfig } from "../index.js";
 import { type CustomProviderOptions, customProvider } from "./custom.js";
 import { toIssuerUrl } from "./shared.js";
 
@@ -18,7 +18,7 @@ export async function auth0Provider(
     CustomProviderOptions,
     "issuer" | "audience" | "baseUrl" | "serverUrl"
   >,
-): Promise<OAuthConfig> {
+): Promise<JwksOAuthConfig> {
   const { domain, audience, ...rest } = opts;
   const config = await customProvider({
     issuer: toIssuerUrl(domain),

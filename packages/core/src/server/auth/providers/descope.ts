@@ -1,4 +1,4 @@
-import type { OAuthConfig } from "../index.js";
+import type { JwksOAuthConfig } from "../index.js";
 import { type CustomProviderOptions, customProvider } from "./custom.js";
 
 /**
@@ -37,7 +37,7 @@ function projectIdFromUrl(url: string): string {
  */
 export function descopeProvider(
   opts: { url: string } & Omit<CustomProviderOptions, "issuer">,
-): Promise<OAuthConfig> {
+): Promise<JwksOAuthConfig> {
   const { url, audience, ...rest } = opts;
   const asUrl = toAuthorizationServerUrl(url);
   const projectId = projectIdFromUrl(asUrl);

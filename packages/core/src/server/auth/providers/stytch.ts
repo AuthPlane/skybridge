@@ -1,4 +1,4 @@
-import type { OAuthConfig } from "../index.js";
+import type { JwksOAuthConfig } from "../index.js";
 import { type CustomProviderOptions, customProvider } from "./custom.js";
 import { toIssuerUrl } from "./shared.js";
 
@@ -13,7 +13,7 @@ export function stytchProvider(
     CustomProviderOptions,
     "issuer" | "audience"
   >,
-): Promise<OAuthConfig> {
+): Promise<JwksOAuthConfig> {
   const { domain, ...rest } = opts;
   return customProvider({ issuer: toIssuerUrl(domain), ...rest });
 }

@@ -5,7 +5,9 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { RequestHandler } from "express";
 import * as jose from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { InvalidTokenError } from "../auth.js";
 import { McpServer } from "../server.js";
+import type { OAuthConfig } from "./index.js";
 
 vi.mock("@skybridge/devtools", () => ({
   devtoolsStaticServer: () =>
@@ -61,7 +63,10 @@ function signToken(key: CryptoKey, scope = "openid email") {
 
 async function bootServer(
   jwksUri: string,
-  { baseUrl = "https://app.example.test" }: { baseUrl?: string | null } = {},
+  {
+    baseUrl = "https://app.example.test",
+    verify,
+  }: { baseUrl?: string | null; verify?: OAuthConfig["verify"] } = {},
 ) {
   const { createApp } = await import("../express.js");
   const server = new McpServer(
@@ -76,7 +81,7 @@ async function bootServer(
           token_endpoint: `${ISSUER}/token`,
           response_types_supported: ["code"],
         },
-        verify: { issuer: ISSUER, audience: AUDIENCE, jwksUri },
+        verify: verify ?? { issuer: ISSUER, audience: AUDIENCE, jwksUri },
         scopesSupported: ["openid", "email"],
         requiredScopes: ["openid"],
       },
@@ -153,6 +158,74 @@ describe("setupOAuth wiring", () => {
     expect(result.content[0]?.text).toBe("client-1");
 
     await client.close();
+  });
+});
+
+describe("custom token verifier in oauth.verify", () => {
+  const customVerifier: OAuthConfig["verify"] = {
+    verifyAccessToken: async (token: string) => {
+      if (token !== "good-opaque-token") {
+        throw new InvalidTokenError("Token rejected by custom verifier");
+      }
+      return {
+        token,
+        clientId: "custom-client",
+        scopes: ["openid"],
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      };
+    },
+  };
+
+  it("threads authInfo from the custom verifier into the tool handler", async () => {
+    const { jwksUri } = await startJwks();
+    const base = await bootServer(jwksUri, { verify: customVerifier });
+
+    const client = new Client({ name: "test-client", version: "0.0.0" });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`${base}/mcp`),
+      {
+        requestInit: {
+          headers: { Authorization: "Bearer good-opaque-token" },
+        },
+      },
+    );
+    await client.connect(transport);
+
+    const result = (await client.callTool({
+      name: "whoami",
+      arguments: {},
+    })) as unknown as { content: { type: string; text: string }[] };
+    expect(result.content[0]?.text).toBe("custom-client");
+
+    await client.close();
+  });
+
+  it("answers 401 + WWW-Authenticate when the custom verifier rejects", async () => {
+    const { jwksUri } = await startJwks();
+    const base = await bootServer(jwksUri, { verify: customVerifier });
+
+    const res = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer forged-token",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "initialize", id: 1 }),
+    });
+    expect(res.status).toBe(401);
+    const header = res.headers.get("www-authenticate");
+    expect(header).toMatch(/error="invalid_token"/);
+    expect(header).toMatch(/resource_metadata=/);
+  });
+
+  it("still serves protected-resource metadata with a custom verifier", async () => {
+    const { jwksUri } = await startJwks();
+    const base = await bootServer(jwksUri, { verify: customVerifier });
+
+    const res = await fetch(`${base}/.well-known/oauth-protected-resource`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { authorization_servers: string[] };
+    expect(body.authorization_servers).toContain(ISSUER);
   });
 });
 
@@ -600,6 +673,19 @@ describe("oauth config validation", () => {
     token_endpoint: `${ISSUER}/token`,
     response_types_supported: ["code"],
   };
+
+  it("throws when a config-shaped verify has no issuer", () => {
+    expect(
+      () =>
+        new McpServer({ name: "t", version: "0" }, undefined, {
+          oauth: {
+            baseUrl: "https://app.example.test",
+            oauthMetadata: validMetadata,
+            verify: {} as OAuthConfig["verify"],
+          },
+        }),
+    ).toThrow(/issuer/);
+  });
 
   it("throws on a non-absolute baseUrl", () => {
     expect(
